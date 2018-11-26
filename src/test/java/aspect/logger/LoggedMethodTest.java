@@ -39,13 +39,11 @@ public class LoggedMethodTest {
     @Autowired
     protected TestServiceMethod testServiceMethod;
 
-    protected Appender appender;
+    protected TestAppender appender;
 
     @Before
     public void before() {
-        appender = Mockito.mock(Appender.class);
-        when(appender.getName()).thenReturn("TestAppender");
-        when(appender.isStarted()).thenReturn(true);
+        appender = new TestAppender();
         getLoggerConfig().addAppender(appender, Level.ALL, null);
     }
 
@@ -61,15 +59,10 @@ public class LoggedMethodTest {
 
         testServiceMethod.annotatedMethod(1, TEST_PARAMETER);
 
-        ArgumentCaptor<LogEvent> argumentCaptor = ArgumentCaptor.forClass(LogEvent.class);
-        Mockito.verify(appender, Mockito.times(1)).append(argumentCaptor.capture());
-
-        assertThat(argumentCaptor.getAllValues().size()).isEqualTo(1);
-
-        assertThat(argumentCaptor.getAllValues()).element(0)
+        assertThat(appender.getEvents().size()).isEqualTo(1);
+        assertThat(appender.getEvents()).element(0)
                 .hasFieldOrPropertyWithValue("level", Level.DEBUG)
-                .extracting("message")
-                .extractingResultOf("toString")
+                .extracting("formattedMessage")
                 .containsExactly("Finished annotatedMethod(1,Test parameter), returned Annotated!!!");
     }
 
@@ -80,7 +73,7 @@ public class LoggedMethodTest {
 
         testServiceMethod.ignoredMethod(1, TEST_PARAMETER);
 
-        Mockito.verify(appender, Mockito.times(0)).append(any());
+        assertThat(appender.getEvents()).isEmpty();
     }
 
     @EnableAutoConfiguration

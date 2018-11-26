@@ -46,7 +46,7 @@ public class LoggedTest {
     @Autowired
     protected CustomizableLoggedInterceptor loggedInterceptor;
 
-    protected Appender appender;
+    protected TestAppender appender;
 
     @EnableAutoConfiguration
     public static class LoggedTestConfiguration {
@@ -71,9 +71,7 @@ public class LoggedTest {
 
     @Before
     public void before() {
-        appender = Mockito.mock(Appender.class);
-        when(appender.getName()).thenReturn("TestAppender");
-        when(appender.isStarted()).thenReturn(true);
+        appender = new TestAppender();
         getLoggerConfig().addAppender(appender, Level.ALL, null);
     }
 
@@ -91,15 +89,10 @@ public class LoggedTest {
 
         setLogLevel(originalLevel);
 
-        ArgumentCaptor<LogEvent> argumentCaptor = ArgumentCaptor.forClass(LogEvent.class);
-        verify(appender, times(1)).append(argumentCaptor.capture());
-
-        assertThat(argumentCaptor.getAllValues().size()).isEqualTo(1);
-
-        assertThat(argumentCaptor.getAllValues()).element(0)
+        assertThat(appender.getEvents().size()).isEqualTo(1);
+        assertThat(appender.getEvents()).element(0)
                 .hasFieldOrPropertyWithValue("level", Level.DEBUG)
-                .extracting("message")
-                .extractingResultOf("toString")
+                .extracting("formattedMessage")
                 .containsExactly("Finished successMethod(1,Test parameter), returned Success!!!");
     }
 
@@ -111,20 +104,14 @@ public class LoggedTest {
 
         testService.successMethod(1, "Test parameter");
 
-        ArgumentCaptor<LogEvent> argumentCaptor = ArgumentCaptor.forClass(LogEvent.class);
-        verify(appender, times(2)).append(argumentCaptor.capture());
-
-        assertThat(argumentCaptor.getAllValues().size()).isEqualTo(2);
-
-        assertThat(argumentCaptor.getAllValues()).element(0)
+        assertThat(appender.getEvents().size()).isEqualTo(2);
+        assertThat(appender.getEvents()).element(0)
                 .hasFieldOrPropertyWithValue("level", Level.TRACE)
-                .extracting("message")
-                .extractingResultOf("toString")
+                .extracting("formattedMessage")
                 .containsExactly("Started successMethod(1,Test parameter)");
-        assertThat(argumentCaptor.getAllValues()).element(1)
+        assertThat(appender.getEvents()).element(1)
                 .hasFieldOrPropertyWithValue("level", Level.DEBUG)
-                .extracting("message")
-                .extractingResultOf("toString")
+                .extracting("formattedMessage")
                 .containsExactly("Finished successMethod(1,Test parameter), returned Success!!!");
 
         setLogLevel(originalLevel);
@@ -138,7 +125,7 @@ public class LoggedTest {
 
         setLogLevel(originalLevel);
 
-        verify(appender, times(0)).append(Matchers.any());
+        assertThat(appender.getEvents()).isEmpty();
     }
 
     @Test(expected = RuntimeException.class)
@@ -151,15 +138,13 @@ public class LoggedTest {
 
             setLogLevel(originalLevel);
         } finally {
-            ArgumentCaptor<LogEvent> argumentCaptor = ArgumentCaptor.forClass(LogEvent.class);
-            verify(appender, times(1)).append(argumentCaptor.capture());
+            verify(appender, times(1)).append(any());
 
-            assertThat(argumentCaptor.getAllValues().size()).isEqualTo(1);
+            assertThat(appender.getEvents().size()).isEqualTo(1);
 
-            assertThat(argumentCaptor.getAllValues()).element(0)
+            assertThat(appender.getEvents()).element(0)
                     .hasFieldOrPropertyWithValue("level", Level.ERROR)
-                    .extracting("message")
-                    .extractingResultOf("toString")
+                    .extracting("formattedMessage")
                     .containsExactly("Exception in errorMethod(1,Test parameter)");
         }
     }
@@ -174,8 +159,7 @@ public class LoggedTest {
 
             setLogLevel(originalLevel);
         } finally {
-            ArgumentCaptor<LogEvent> argumentCaptor = ArgumentCaptor.forClass(LogEvent.class);
-            verify(appender, times(0)).append(argumentCaptor.capture());
+            verifyZeroInteractions(appender);
         }
     }
 
